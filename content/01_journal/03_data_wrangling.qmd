@@ -1,8 +1,386 @@
 ---
 title: "Data Wrangling"
-author: "Joschka Schwarz"
+author: "Lutfi Luqman Khary"
 ---
 
-::: callout-note
-You can delete everything in here and start fresh.
-:::
+# Challenge 1
+```{r}
+# 1.0 Libraries ----
+# Tidyverse
+library(tidyverse)
+library(vroom)
+
+# Data Table
+library(data.table)
+
+# Counter
+library(tictoc)
+
+# 2.0 DATA IMPORT ----
+
+# 2.1 asignee ----
+col_types_assignee <- list(
+  id = col_character(),
+  type = col_character(),
+  organization = col_character()
+)
+
+assignee_tbl <- vroom(
+  file       = "Patent_data_reduced/assignee.tsv",
+  delim      = "\t",
+  col_types = col_types_assignee,
+  na         = c("", "NA", "NULL")
+)
+
+# 2.2 patent assignee ----
+col_types_patent_assignee <- list(
+  patent_id   = col_character(),
+  assignee_id = col_character()
+)
+
+patent_assignee_tbl <- vroom(
+  file       = "Patent_data_reduced/patent_assignee.tsv",
+  delim      = "\t",
+  col_types = col_types_patent_assignee,
+  na         = c("", "NA", "NULL")
+)
+
+patent_assignee_tbl <- patent_assignee_tbl %>% rename(id = assignee_id)
+
+# 3.1 assignee ----
+class(assignee_tbl)
+
+setDT(assignee_tbl)
+
+class(assignee_tbl)
+
+assignee_tbl %>% glimpse()
+
+# 3.2 patent assignee ----
+class(patent_assignee_tbl)
+
+setDT(patent_assignee_tbl)
+
+class(patent_assignee_tbl)
+
+patent_assignee_tbl %>% glimpse()
+
+# 4.0 Data Wrangling ----
+
+# 4.1 Joining / Merging Data ----
+tic()
+combined_data <- merge(x = assignee_tbl, y = patent_assignee_tbl, 
+                       by    = "id", 
+                       all.x = TRUE, 
+                       all.y = FALSE)
+toc()
+
+combined_data %>% glimpse()
+
+# Same operation with dplyr
+tic()
+patent_assignee_tbl %>%
+  left_join(assignee_tbl, by = "id")
+toc()
+
+# 4.2. Preparing the Data Table
+
+setkey(combined_data, "id")
+key(combined_data)
+
+setorderv(combined_data, c("id", "patent_id"))
+
+# 4.3 Select Columns ----
+combined_data %>% dim()
+
+keep_cols <- c("organization",
+               "type",
+               "patent_id")
+
+combined_data <- combined_data[, ..keep_cols]
+
+combined_data %>% dim()
+
+
+result_1_tbl <- combined_data[type == 2, .(count = .N), by = organization][order(-count)][1:10]
+
+result_1_tbl
+```
+
+# Challenge 2
+```{r}
+# 1.0 Libraries ----
+# Tidyverse
+library(tidyverse)
+library(vroom)
+library(lubridate)
+# Data Table
+library(data.table)
+
+# Counter
+library(tictoc)
+
+# 2.0 DATA IMPORT ----
+
+# 2.1 asignee ----
+col_types_assignee <- list(
+  id = col_character(),
+  type = col_character(),
+  organization = col_character()
+)
+
+assignee_tbl <- vroom(
+  file       = "Patent_data_reduced/assignee.tsv",
+  delim      = "\t",
+  col_types = col_types_assignee,
+  na         = c("", "NA", "NULL")
+)
+
+# 2.2 patent assignee ----
+col_types_patent_assignee <- list(
+  patent_id   = col_character(),
+  assignee_id = col_character()
+)
+
+patent_assignee_tbl <- vroom(
+  file       = "Patent_data_reduced/patent_assignee.tsv",
+  delim      = "\t",
+  col_types = col_types_patent_assignee,
+  na         = c("", "NA", "NULL")
+)
+
+patent_assignee_tbl <- patent_assignee_tbl %>% rename(id = assignee_id)
+
+# 2.3 patent ----
+col_types_patent <- list(
+  id   = col_character(),
+  date = col_date("%Y-%m-%d"),
+  num_claims = col_integer()
+)
+
+patent_tbl <- vroom(
+  file       = "Patent_data_reduced/patent.tsv",
+  delim      = "\t",
+  col_types = col_types_patent,
+  na         = c("", "NA", "NULL")
+)
+
+patent_tbl <- patent_tbl %>% rename(patent_id = id)
+
+# 3.1 assignee ----
+class(assignee_tbl)
+
+setDT(assignee_tbl)
+
+class(assignee_tbl)
+
+assignee_tbl %>% glimpse()
+
+# 3.2 patent assignee ----
+class(patent_assignee_tbl)
+
+setDT(patent_assignee_tbl)
+
+class(patent_assignee_tbl)
+
+patent_assignee_tbl %>% glimpse()
+
+# 3.3 patent ----
+class(patent_tbl)
+
+setDT(patent_tbl)
+
+class(patent_tbl)
+
+patent_tbl %>% glimpse()
+
+# 4.0 Data Wrangling ----
+
+# 4.1 Joining / Merging Data ----
+tic()
+combined_data_1 <- merge(x = assignee_tbl, y = patent_assignee_tbl, 
+                       by    = "id", 
+                       all.x = TRUE, 
+                       all.y = FALSE)
+toc()
+
+combined_data_1 %>% glimpse()
+
+# Same operation with dplyr
+tic()
+patent_assignee_tbl %>%
+  left_join(assignee_tbl, by = "id")
+toc()
+
+# combining next data
+tic()
+combined_data_2 <- merge(x = combined_data_1, y = patent_tbl, 
+                       by    = "patent_id", 
+                       all.x = TRUE, 
+                       all.y = FALSE)
+toc()
+
+combined_data_2 %>% glimpse()
+
+# Same operation with dplyr
+tic()
+patent_tbl %>%
+  left_join(combined_data_1, by = "patent_id")
+toc()
+
+# Select columns
+combined_data_2 %>% dim()
+
+keep_cols <- c("organization",
+               "patent_id",
+               "type",
+               "date")
+
+combined_data_2 <- combined_data_2[, ..keep_cols]
+
+combined_data_2 %>% dim()
+
+combined_data_2 %>% glimpse()
+
+combined_data_2 <- combined_data_2 %>% filter(between(date, as.Date('2014-08-01'), as.Date('2014-09-01')))
+
+result_2_tbl <- combined_data_2[type == 2, .(count = .N), by = organization][order(-count)][1:10]
+
+result_2_tbl
+```
+
+#Challenge 3
+```{r}
+# 1.0 Libraries ----
+# Tidyverse
+library(tidyverse)
+library(vroom)
+# Data Table
+library(data.table)
+
+# Counter
+library(tictoc)
+
+# 2.0 DATA IMPORT ----
+
+# 2.1 asignee ----
+col_types_assignee <- list(
+  id = col_character(),
+  type = col_character(),
+  organization = col_character()
+)
+
+assignee_tbl <- vroom(
+  file       = "Patent_data_reduced/assignee.tsv",
+  delim      = "\t",
+  col_types = col_types_assignee,
+  na         = c("", "NA", "NULL")
+)
+
+# 2.2 patent assignee ----
+col_types_patent_assignee <- list(
+  patent_id   = col_character(),
+  assignee_id = col_character()
+)
+
+patent_assignee_tbl <- vroom(
+  file       = "Patent_data_reduced/patent_assignee.tsv",
+  delim      = "\t",
+  col_types = col_types_patent_assignee,
+  na         = c("", "NA", "NULL")
+)
+
+patent_assignee_tbl <- patent_assignee_tbl %>% rename(id = assignee_id)
+
+# 2.3 USPC
+col_types_uspc <- list(
+  patent_id = col_character(),
+  mainclass_id = col_integer()
+)
+
+uspc_tbl <- vroom(
+  file       = "Patent_data_reduced/uspc.tsv",
+  delim      = "\t",
+  col_types = col_types_uspc,
+  na         = c("", "NA", "NULL")
+)
+
+
+
+# 3.1 assignee ----
+class(assignee_tbl)
+
+setDT(assignee_tbl)
+
+class(assignee_tbl)
+
+# 3.2 patent assignee ----
+class(patent_assignee_tbl)
+
+setDT(patent_assignee_tbl)
+
+class(patent_assignee_tbl)
+
+# 3.3 uspc ----
+class(uspc_tbl)
+
+setDT(uspc_tbl)
+
+class(uspc_tbl)
+
+# 4.0 Data Wrangling ----
+
+# 4.1 Joining / Merging Data ----
+uspc_mean <- uspc_tbl[, lapply(.SD, mean), 
+                      by = .(patent_id, mainclass_id), 
+                      .SDcols = c("sequence")]
+
+tic()
+combined_data <- merge(x = assignee_tbl, y = patent_assignee_tbl, 
+                       by    = "id", 
+                       all.x = TRUE, 
+                       all.y = FALSE)
+toc()
+
+combined_data %>% glimpse()
+
+# Same operation with dplyr
+tic()
+patent_assignee_tbl %>%
+  left_join(assignee_tbl, by = "id")
+toc()
+
+# second combination
+combined_data_3 <- merge(x = combined_data, y = uspc_mean, 
+                        by = "patent_id", 
+                        all.x = TRUE, 
+                        all.y = FALSE)
+
+
+# 4.2. Preparing the Data Table
+
+setkey(combined_data, "id")
+key(combined_data)
+
+setorderv(combined_data, c("id", "patent_id"))
+
+# most innovative sector
+most_sector <- combined_data_3[!is.na(mainclass_id), .(count = .N), by = mainclass_id][order(-count)][1]
+
+most_sector
+
+# Top 10 companies with most patents (worldwide)
+# remove NA value on mainclass_id
+combined_data_3_clean <- combined_data_3[!is.na(mainclass_id)]
+
+most_patents_worldwide <- combined_data_3_clean[, .(count = .N), by = organization][order(-count)][1:10]
+
+most_patents_worldwide
+
+# subset top 10 companies
+subset_10_companies <- setDT(combined_data_3_clean, key='organization')[J(most_patents_worldwide)]
+
+# top 5 USPTO tech main classes
+subset_10_companies[, .(count = .N), by = mainclass_id][order(-count)][1:5]
+
+```

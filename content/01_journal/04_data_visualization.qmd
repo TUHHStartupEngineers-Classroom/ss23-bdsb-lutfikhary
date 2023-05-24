@@ -1,8 +1,157 @@
 ---
 title: "Data Visualization"
-author: "Joschka Schwarz"
+author: "Lutfi Luqman Khary"
 ---
 
-::: callout-note
-You can delete everything in here and start fresh.
-:::
+# Challenge 1
+```{r}
+# Libraries ----
+
+library(tidyverse)
+library(ggrepel)
+
+# Import data from CSV ----
+
+covid_data_tbl <- read_csv("https://covid.ourworldindata.org/data/owid-covid-data.csv")
+
+# Data Wrangling ----
+
+# Select columns and filter categories
+case_by_country_tbl <- covid_data_tbl %>%
+  
+  select(location, date, total_cases) %>%
+  filter(location %in% c("Germany","United Kingdom","France","Spain","United States") & date < Sys.Date()-10) %>%
+  
+  # summarise
+  group_by(location, date) %>%
+  summarise(total_cases = sum(total_cases)) %>%
+  ungroup() %>%
+  
+  # remove NA
+  replace(is.na(.), 0) %>%
+  
+  # Set column name
+  rename('Continent / Country' = location,
+         'Cumulatives' = total_cases)
+
+# synchronize data
+n = Sys.Date()-10
+
+
+# Show labels only at the end
+end_labels <- case_by_country_tbl %>% 
+  group_by('Continent / Country') %>% 
+  top_n(1, date)
+
+# 4.0 DATA VISUALIZATION ----
+
+# Line Plot
+case_by_country_tbl %>%
+  
+  ggplot(aes(x=date, y=`Cumulatives`, group = `Continent / Country`, color = `Continent / Country`)) +
+  geom_line(size = 1) +
+  scale_x_date(date_breaks="1 month", date_labels = "%B'%y", limits = as.Date(c('2020-01-01','2023-06-01')) ) +
+  scale_y_continuous(labels = scales::number_format(scale = 1e-6, 
+                                                    prefix = "",
+                                                    suffix = " M")) +
+  scale_color_brewer(palette="Accent") +
+  
+  labs(
+    title    = "COVID-19 Confirmed Cases Worldwide",
+    subtitle = str_glue("As of {n}"),
+    x = "",
+    y = "Cumulative Cases"
+  ) + 
+  
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "bottom"
+  ) +
+  
+  geom_label_repel(aes(label = scales::number(Cumulatives)), 
+                   data = end_labels,
+                   nudge_x = 1,
+                   box.padding = 0.5,
+                   show.legend = FALSE)
+```
+
+# Challenge 2
+```{r}
+# Libraries ----
+
+library(tidyverse)
+library(maps)
+library(scales)
+
+# Import world map ----
+world <- map_data("world")
+
+# Import COVID data ----
+covid_data_tbl <- read_csv("https://covid.ourworldindata.org/data/owid-covid-data.csv")
+
+# Data Wrangling ----
+# rename locations
+covid_data_tbl <- covid_data_tbl %>% 
+  mutate(location = case_when(
+    
+    location == "Antigua and Barbuda" ~ "Antigua",
+    location == "Cote d'Ivoire" ~ "Ivory Coast",
+    location == "Czechia" ~ "Czech Republic",
+    location == "Democratic Republic of Congo" ~ "Democratic Republic of the Congo",
+    location == "Timor" ~ "Timor-Leste",
+    location == "Trinidad and Tobago" ~ "Trinidad",
+    location == "United Kingdom" ~ "UK",
+    location == "United States" ~ "USA",
+    TRUE ~ location
+    
+  ))
+
+# Select and Filter data
+mort_rate_tbl <- covid_data_tbl %>%
+  
+  select(location, date, total_deaths, population) %>%
+  
+  # Reemove NA
+  replace(is.na(.), 0) %>%
+  
+  # new column for mortality rate
+  group_by(location) %>%
+  mutate(mortality_rate = total_deaths / population) %>%
+  ungroup() %>%
+  
+  # select date
+  filter(date == "2023-04-16") %>%
+  
+  # Set column name
+  rename(region = location)
+
+  # Format as numeric value for mortality rate
+  mort_rate_tbl$mortality_rate <- as.numeric(mort_rate_tbl$mortality_rate)
+  
+  # Merge table
+  
+  mort_rate_map <- left_join(mort_rate_tbl,world, by = "region")
+  
+  # plot
+  
+  ggplot(mort_rate_map, aes(map_id = region, fill = mortality_rate))+
+    
+    geom_map(map = mort_rate_map,  color = "black")+
+    
+    expand_limits(x = mort_rate_map$long, y = mort_rate_map$lat) +
+    
+    scale_fill_gradient(low='red', high='grey10', labels = percent) +
+    
+    # Labels
+    labs(
+      title = "Confirmed COVID-19 Deaths Relative to the size of the Population",
+      caption = "2023-04-16",
+      x = "",
+      y = "",
+    ) +
+    
+    theme(
+      legend.position = "right"
+    )
+    
+```
