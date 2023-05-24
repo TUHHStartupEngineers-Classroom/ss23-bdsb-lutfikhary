@@ -1,8 +1,46 @@
 ---
 title: "Data Acquisition"
-author: "Joschka Schwarz"
+author: "Lutfi Luqman Khary"
 ---
 
-::: callout-note
-You can delete everything in here and start fresh.
-:::
+# Challenge 1
+```{r}
+#List of needs of foodbanks countrywide
+# Libraries ----
+library(httr)
+library(jsonlite)
+
+# Call API ----
+needs <- httr::GET("https://www.givefood.org.uk/api/2/needs/")
+
+#str(needs)
+
+#str(needs$content)
+
+# Convert to text ----
+needscontent <- httr::content(needs, as = "text")
+#str(needscontent)
+
+# Convert JSON string to a dataframe
+needsJSON <- jsonlite::fromJSON(needscontent)
+
+needsJSON
+```
+
+# Challenge 2
+```{r}
+library(dplyr)
+library(rvest)
+
+link = "https://www.rosebikes.de/sale/fahrr%C3%A4der"
+page = read_html(link)
+
+model = page %>% html_nodes(".catalog-product-tile__title") %>% html_text()
+price = page %>% html_nodes(".product-tile-price__current-value") %>% html_text()
+
+model <- gsub('[\t\n]','',model)
+price <- gsub('[\t\n]','',price)
+
+bikes = data.frame(model, price, stringsAsFactors = FALSE)
+bikes
+```
